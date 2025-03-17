@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>게시글 목록</title>
+</head>
+<body>
+<h1>게시글 목록</h1>
+<ul>
+    <li th:each="post : ${recruits}">
+        <a th:href="@{/recruits/{id}(id=${recruits.id})}" th:text="${recruits.title}"></a>
+    </li>
+</ul>
+<a href="/recruits/new">새 글 작성</a>
+</body>
+</html>
