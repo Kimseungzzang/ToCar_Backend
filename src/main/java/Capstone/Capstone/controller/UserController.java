@@ -65,21 +65,42 @@ public class UserController {
     @PostMapping("/login")
     @Tag(name = "User API")
     @Operation(summary = "로그인", description = "id와 password를 기반으로 로그인합니다.")
-    public ResponseEntity<UserDto> login(@RequestBody User user, HttpServletRequest request) {
-        String Id=user.getId();
-        String password=user.getPassword();
-        User findUser=userService.getUserById(Id);
+    public ResponseEntity<Void> login(@RequestBody UserDto userDto, HttpServletRequest request) {
+        String Id = userDto.getId();
+        String password = userDto.getPassword();
+
+
+        User findUser = userService.getUserById(Id);
         boolean isAuthenticated = userService.authenticateUser(Id, password);
+
         if (isAuthenticated) {
+
             HttpSession session = request.getSession(true);
-            session.setAttribute("id",findUser.getId());
-            session.setAttribute("nickname",findUser.getNickname());
-            UserDto userDto=new UserDto();
-            userDto.setId(findUser.getId());
-            userDto.setNickname(findUser.getNickname());
-            return new ResponseEntity<>(userDto, HttpStatus.OK);
+
+            // 현재 기기 정보
+            String currentDevice = request.getHeader("User-Agent");
+            String previousDevice = (String) session.getAttribute("device");
+
+            // 기존 세션과 기기 정보 비교
+            if (previousDevice != null && !previousDevice.equals(currentDevice)) {
+                // 기기 정보가 다르면 기존 세션을 무효화하고 로그아웃 처리
+                session.invalidate(); // 기존 세션 종료
+
+                // 새로운 세션 생성
+                session = request.getSession(true);
+                session.setAttribute("id", findUser.getId());
+                session.setAttribute("nickname", findUser.getNickname());
+                session.setAttribute("device", currentDevice); // 새로운 기기 정보 저장
+            } else {
+                // 동일 기기에서 로그인한 경우
+                session.setAttribute("id", findUser.getId());
+                session.setAttribute("nickname", findUser.getNickname());
+                session.setAttribute("device", currentDevice); // 동일 기기 정보 저장
+            }
+
+            return new ResponseEntity<>(HttpStatus.OK); // 로그인 성공
         } else {
-            return new ResponseEntity<>(null, HttpStatus.UNAUTHORIZED);
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED); // 로그인 실패
         }
     }
 
