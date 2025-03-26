@@ -10,6 +10,7 @@ import net.nurigo.sdk.message.service.DefaultMessageService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -19,6 +20,10 @@ import java.util.Random;
 public class SmsUtil {
 
     private final Map<String, String> verificationCodes = new HashMap<>();
+
+
+
+
 
     @Value("${sms.api.key}")
     private String apiKey;
@@ -34,18 +39,17 @@ public class SmsUtil {
     }
 
 
+
+
     public static String VerificationCode() {
-        // 4자리의 난수 생성
+
         Random random = new Random();
         int randomNumber = random.nextInt(10000); // 0부터 9999까지의 난수 생성
         return String.format("%04d", randomNumber);
     }
 
-
-    // 단일 메시지 발송 예제
     public SingleMessageSentResponse sendOne(String to, String verificationCode) {
         Message message = new Message();
-        // 발신번호 및 수신번호는 반드시 01012345678 형태로 입력되어야 합니다.
         message.setFrom("01045729858");
         message.setTo(to);
         message.setText("[ToCar] 아래의 인증번호를 입력해주세요\n" + verificationCode);
@@ -54,10 +58,15 @@ public class SmsUtil {
         return response;
     }
 
-    public String generateStoreVerificationCode(String phoneNum) {
+       public String generateStoreVerificationCode(String phoneNum) {
         String verificationCode = VerificationCode();
+
         verificationCodes.put(phoneNum, verificationCode);
-        log.info("phoneNum={} storedCode={}",phoneNum, verificationCodes.get(phoneNum));
+
+        // 3분 후에 인증 코드를 삭제하는 스케줄러 실행
+        scheduleCodeDeletion(phoneNum);
+
+        log.info("phoneNum={} storedCode={}", phoneNum, verificationCode);
         return verificationCode;
     }
     public boolean checkVerificationCode(String phoneNum, String enteredCode) {
@@ -67,4 +76,20 @@ public class SmsUtil {
             log.info("enteredCode={} storedCode={}",enteredCode,storedCode);
             return storedCode != null && storedCode.equals(enteredCode);
         }
+
+
+    private void scheduleCodeDeletion(String phoneNum) {
+        // 5분 후에 인증 코드를 삭제
+        long delay = 5 * 60 * 1000;
+
+        new java.util.Timer().schedule(new java.util.TimerTask() {
+            @Override
+            public void run() {
+                verificationCodes.remove(phoneNum);
+            }
+        }, delay);
+    }
+
+
 }
+
